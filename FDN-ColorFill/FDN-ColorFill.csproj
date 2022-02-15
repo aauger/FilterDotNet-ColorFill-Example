@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net6.0</TargetFramework>
+    <RootNamespace>FDN_ColorFill</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Drawing.Common" Version="6.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="FastImageLibrary">
+      <HintPath>..\lib\FastImageLibrary.dll</HintPath>
+    </Reference>
+    <Reference Include="FastImageProvider">
+      <HintPath>..\lib\FastImageProvider.dll</HintPath>
+    </Reference>
+    <Reference Include="FilterDotNet">
+      <HintPath>..\lib\FilterDotNet.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+</Project>
