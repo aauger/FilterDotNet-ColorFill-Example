@@ -1,4 +1,5 @@
-﻿using FilterDotNet.Interfaces;
+﻿using FilterDotNet.Exceptions;
+using FilterDotNet.Interfaces;
 
 namespace FDN_ColorFill
 {
@@ -23,6 +24,9 @@ namespace FDN_ColorFill
 
         public IImage Apply(IImage input)
         {
+            if (!this._ready)
+                throw new NotReadyException();
+
             IImage output = this._engine.CreateImage(input.Width, input.Height);
             throw new NotImplementedException();
         }

@@ -1,16 +1,40 @@
-﻿using FilterDotNet.Interfaces;
-using FilterDotNet.Filters;
-using System.Drawing;
-using FilterDotNet.LibraryConfigurators;
+﻿using System.Drawing;
 using FDN_ColorFill;
+using FilterDotNet.Filters;
+using FilterDotNet.Interfaces;
+using FilterDotNet.LibraryConfigurators;
+using FastImageProvider;
 
-IEngine engine = FastImageProvider.Injectables.FiEngine;
+// Take two layers, one with edge information (black/white) and one with color information
+IImage outlineLayer = new FIDrawingImage(Bitmap.FromFile(args[0]));
+IImage colorLayer = new FIDrawingImage(Bitmap.FromFile(args[1]));
 
-IImage image = engine.CreateImage(100, 100);
+// Engine provided by FIP
+IEngine engine = Injectables.FiEngine;
 
-IFilter thresholdFilter = new ThresholdFilter(new LambdaPluginConfigurator<int>(() => 127), engine).Initialize();
-IFilter minFilter = new StatisticalFilter(new LambdaPluginConfigurator<StatisticalFilterConfiguration>(
-    () => new() { Mode = StatisticalFilterMode.MIN, BlockSize = 8, Thresholding = false, Threshold = 0 }), engine).Initialize();
-IImage fPipeline = (new[] { minFilter, thresholdFilter }).Aggregate(image, (i, f) => f.Apply(i));
-IFilter layerInpaintingFilter = new LayerInpaintingFilter(new LambdaPluginConfigurator<IImage>(
-    () => fPipeline), engine).Initialize();
+// Simplify creating LPFs for Filters
+IPluginConfigurator<T> CreateConf<T>(Func<T> func) => new LambdaPluginConfigurator<T>(func);
+
+IFilter CreateMinFilter() {
+    return new StatisticalFilter(CreateConf(() => 
+        new StatisticalFilterConfiguration 
+        { 
+            Mode = StatisticalFilterMode.MIN, 
+            BlockSize = 8, 
+            Thresholding = false, 
+            Threshold = 0 
+        }), engine).Initialize();
+}
+
+IFilter CreateThresholdFilter() {
+    return new ThresholdFilter(CreateConf(() => 127), engine).Initialize();
+}
+
+IImage thresholdedMinned = CreateThresholdFilter().Apply(outlineLayer)
+                       .Then(i => CreateMinFilter().Apply(i));
+
+IFilter CreateLayerInpaintingFilter() {
+    return new LayerInpaintingFilter(CreateConf(() => thresholdedMinned), engine).Initialize(); 
+}
+
+IImage result = CreateThresholdFilter().Apply(thresholdedMinned);
