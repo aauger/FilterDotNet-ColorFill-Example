@@ -30,11 +30,12 @@ IFilter CreateThresholdFilter() {
     return new ThresholdFilter(CreateConf(() => 127), engine).Initialize();
 }
 
-IImage thresholdedMinned = CreateThresholdFilter().Apply(outlineLayer)
-                       .Then(i => CreateMinFilter().Apply(i));
-
-IFilter CreateLayerInpaintingFilter() {
-    return new LayerInpaintingFilter(CreateConf(() => thresholdedMinned), engine).Initialize(); 
+IFilter CreateLayerInpaintingFilter()
+{
+    return new LayerInpaintingFilter(CreateConf(() => (colorLayer, 25)), engine).Initialize();
 }
+IImage result = CreateThresholdFilter().Apply(outlineLayer)
+    .Then(CreateMinFilter().Apply)
+    .Then(CreateLayerInpaintingFilter().Apply);
 
-IImage result = CreateThresholdFilter().Apply(thresholdedMinned);
+((FIDrawingImage)result).UnwrapFastImage().ToBitmap().Save("output.png", System.Drawing.Imaging.ImageFormat.Png);
