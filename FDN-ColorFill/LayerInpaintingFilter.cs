@@ -8,19 +8,19 @@ namespace FDN_ColorFill
     public class LayerInpaintingFilter : IFilter, IConfigurableFilter
     {
         /* DI */
-        private readonly IPluginConfigurator<(IImage, int)> _pluginConfigurator;
+        private readonly IPluginConfigurator<(IImage, int, List<IColor>)> _pluginConfigurator;
         private readonly IEngine _engine;
 
         /* Internals */
         private bool _ready = false;
         private IImage _colorLayer;
         private int _distance = 0;
-        private const bool IGNORE_WHITE = true;
+        private List<IColor> _ignoredColors;
 
         /* Properties */
         public string Name => "Layer In-Painting";
 
-        public LayerInpaintingFilter(IPluginConfigurator<(IImage, int)> pluginConfigurator, IEngine engine)
+        public LayerInpaintingFilter(IPluginConfigurator<(IImage, int, List<IColor>)> pluginConfigurator, IEngine engine)
         {
             this._pluginConfigurator = pluginConfigurator;
             this._engine = engine;
@@ -43,9 +43,8 @@ namespace FDN_ColorFill
                     if (input.GetPixel(x, y).Equivalent(BLACK))
                     {
                         IEnumerable<Node> relNodes = CollectRelativeNodes(this._colorLayer, x, y, this._distance, this._distance);
-                        if (IGNORE_WHITE)
-                            relNodes = relNodes.Where(x => !x.Color!.Equivalent(WHITE));
-                        IColor modeRelatives = Mode(relNodes);
+                        IEnumerable<Node> filteredNodes = FilterRelativeNodes(relNodes, this._ignoredColors);
+                        IColor modeRelatives = Mode(filteredNodes);
                         output.SetPixel(x, y, modeRelatives);
                     }
                 }); 
@@ -54,19 +53,23 @@ namespace FDN_ColorFill
             return output;
         }
 
-
         public IFilter Initialize()
         {
-            (this._colorLayer, this._distance) = this._pluginConfigurator.GetPluginConfiguration();
+            (this._colorLayer, this._distance, this._ignoredColors) = this._pluginConfigurator.GetPluginConfiguration();
             this._ready = true;
             return this;
         }
 
-        private IEnumerable<Node> CollectRelativeNodes(IImage image, int x, int y, int dx, int dy) =>
+        private static IEnumerable<Node> CollectRelativeNodes(IImage image, int x, int y, int dx, int dy) =>
             from ox in Enumerable.Range(-dx / 2, dx)
             from oy in Enumerable.Range(-dy / 2, dy)
             where !image.OutOfBounds(ox + x, oy + y)
             select new Node { X = x + ox, Y = y + oy, Color = image.GetPixel(ox + x, oy + y) };
+
+        private static IEnumerable<Node> FilterRelativeNodes(IEnumerable<Node> nodes, List<IColor> ignoredColors) =>
+            from node in nodes
+            where !ignoredColors.Any(cc => node.Color!.R == cc.R && node.Color!.G == cc.G && node.Color!.B == cc.B)
+            select node;
 
         private IColor Mode(IEnumerable<Node> relNodes)
         {
