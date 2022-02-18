@@ -41,24 +41,33 @@ IFilter CreateMinFilter() {
         }), engine).Initialize();
 }
 
-IFilter CreateThresholdFilter() {
-    return new ThresholdFilter(CreateConf(() => 250), engine).Initialize();
+IFilter CreateBlurFilter() {
+    return new StatisticalFilter(CreateConf(() =>
+        new StatisticalFilterConfiguration 
+        { 
+            Mode = StatisticalFilterMode.AVERAGE,
+            BlockMask= blockMap,
+            Thresholding=false,
+            Threshold=0
+        }), engine).Initialize();
 }
+
+IFilter CreateThresholdFilter() {
+    return new ThresholdFilter(CreateConf(() => 200), engine).Initialize();
+}
+
+IImage thresholded = CreateBlurFilter().Apply(outlineLayer).Then(i => CreateThresholdFilter().Apply(i));
 
 IFilter CreateLayerInpaintingFilter()
 {
     return new LayerInpaintingFilter(CreateConf(() =>
     (
         colorLayer,
-        12,
-        new List<IColor>()
-        {
-            engine.CreateColor(0, 0, 0, 255),
-            engine.CreateColor(174, 174, 174, 255)
-        })
-    ), engine).Initialize();
+        thresholded,
+        8
+    )), engine).Initialize();
 }
-IImage result = CreateThresholdFilter().Apply(outlineLayer)
+IImage result = thresholded
     .Then(CreateMinFilter().Apply)
     .Then(CreateLayerInpaintingFilter().Apply);
 
